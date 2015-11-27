@@ -1,0 +1,108 @@
+//apply from: 'bintray.gradle'
+apply plugin: 'maven-publish'
+apply plugin: 'com.jfrog.bintray'
+
+group = GROUP
+version = VERSION
+//
+task sourcesJar(type: Jar) {
+    from android.sourceSets.main.java.srcDirs
+    classifier = 'sources'
+}
+
+task javadoc(type: Javadoc) {
+    source = android.sourceSets.main.java.srcDirs
+    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+}
+
+javadoc {
+    options {
+        encoding "UTF-8"
+        charSet 'UTF-8'
+        author true
+        version true
+//        links "http://docs.oracle.com/javase/8/docs/api"
+    }
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    from javadoc.destinationDir
+    classifier = 'javadoc'
+}
+
+artifacts {
+    archives sourcesJar
+//    archives javadocJar
+}
+
+bintray {
+    user = hasProperty("bintrayUser") ? getProperty("bintrayUser") : getProperty("BINTRAY_USER")
+    key = hasProperty("bintrayKey") ? getProperty("bintrayKey") : getProperty("BINTRAY_KEY")
+
+    configurations = ['archives']    //When uploading configuration files
+    publications = ['MyPublication']    //When uploading Maven-based publication files
+    publish = true            //If version should be auto published after an upload
+
+    pkg {//包
+        repo = 'maven'//仓库名称
+        name = NAME//包名
+        desc = DESCRIPTION//描述
+        websiteUrl = WEBSITE_URL//页面
+        issueTrackerUrl = ISSUETRACKER_URL//事务页面
+        vcsUrl = VCS_URL//版本管理
+        licenses = ['Apache-2.0']//协议
+        labels = ['novelot', 'volley', 'android']//标签
+        publicDownloadNumbers = true//是否公开下载数
+        version {//版本
+            name = VERSION //Bintray logical version name//版本名
+            desc = DESCRIPTION + "-" + VERSION////版本描述
+            //released  = //Optional - Date of the version release. 2 possible values: date in the format of 'yyyy-MM-dd'T'HH:mm:ss.SSSZZ' OR a java.util.Date instance
+            vcsTag = VERSION//
+            gpg {//加密
+                sign = true //Determines whether to GPG sign the files. The default is false
+                passphrase = GPG_PASSWORD //Optional. The passphrase for GPG signing'
+            }
+        }
+    }
+}
+
+publishing {
+    publications {
+        MyPublication(MavenPublication) {
+            groupId GROUP
+            artifactId ARTIFACT_ID
+            version VERSION
+            //补充pom文件其他信息
+            pom.withXml {
+                Node root = asNode()
+                //项目描述
+                root.appendNode('name', ARTIFACT_ID)
+                root.appendNode('description', DESCRIPTION)
+                root.appendNode('url', WEBSITE_URL)
+
+                //
+                def issues = root.appendNode('issueManagement')
+                issues.appendNode('system', 'github')
+                issues.appendNode('url', ISSUETRACKER_URL)
+
+                //
+                def scm = root.appendNode('scm')
+                scm.appendNode('url', VCS_URL)
+                scm.appendNode('connection', VCS_URL)
+                scm.appendNode('developerConnection', SCM_DEV_CONNECTION)
+
+                //开源协议
+                def license = root.appendNode('licenses').appendNode('license')
+                license.appendNode('name', LICENCE_NAME)
+                license.appendNode('url', LICENCE_URL)
+                license.appendNode('distribution', LICENCE_DIST)
+
+                //开发者信息
+                def developer = root.appendNode('developers').appendNode('developer')
+                developer.appendNode('id', DEVELOPER_ID)
+                developer.appendNode('name', DEVELOPER_NAME)
+                developer.appendNode('email', DEVELOPER_EMAIL)
+            }
+        }
+    }
+}
